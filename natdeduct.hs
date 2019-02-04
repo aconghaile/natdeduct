@@ -1,3 +1,5 @@
+import Data.List
+
 data Logical = Conj | Disj | Imp
 data Proposition = Atomic String | And Proposition Proposition | Or Proposition Proposition | Implies Proposition Proposition | Negation Proposition
 
@@ -5,10 +7,47 @@ data Proposition = Atomic String | And Proposition Proposition | Or Proposition 
 
 instance Show Proposition where
 	show (Atomic str) = str
-	show (And a b) = "(" ++ (show a) ++ (show Conj) ++ (show b) ++ ")"
-	show (Or a b) = "(" ++ (show a) ++ (show Disj) ++ (show b) ++ ")"
-	show (Implies a b) = "(" ++ (show a) ++ (show Imp) ++ (show b) ++ ")"
-	show (Negation a) = "(NOT (" ++ (show a) ++ "))"
+	
+	show (And (Atomic s) (Atomic t) ) =  s ++ (show Conj) ++ t
+	show (And (Atomic s) (And a b) ) =  s ++ (show Conj) ++ (show (And a b))
+	show (And (And a b) (Atomic s) ) =  (show (And a b)) ++ (show Conj) ++ s
+	show (And (Negation (Atomic s)) (And a b) ) =  (show (Negation (Atomic s))) ++ (show Conj) ++ (show (And a b))
+	show (And (And a b) (Negation (Atomic s)) ) =  (show (And a b)) ++ (show Conj) ++ (show (Negation (Atomic s)))
+	
+	show (And (And a b) (And c d) ) =  (show (And a b)) ++ (show Conj) ++ (show (And c d))
+	show (And a (And b c)) = "(" ++ (show a) ++ ")" ++ (show Conj) ++ (show (And b c))
+	show (And (And a b) c ) =  (show (And a b)) ++ (show Conj) ++ "(" ++ (show c) ++ ")"
+	
+	show (And (Atomic s) a ) =  (show (Atomic s)) ++ (show Conj) ++ "(" ++ (show a) ++ ")"
+	show (And a (Atomic s) ) =  "(" ++ (show a) ++ ")" ++ (show Conj) ++ (show (Atomic s))
+	show (And (Negation (Atomic s)) a ) =  (show (Negation (Atomic s))) ++ (show Conj) ++ "(" ++ (show a) ++ ")"
+	show (And a (Negation (Atomic s)) ) =  "(" ++ (show a) ++ ")" ++ (show Conj) ++ (show (Negation (Atomic s)))
+	
+	show (And a b) = "(" ++ (show a) ++ ")" ++ (show Conj) ++ "(" ++ (show b) ++ ")"
+	
+	show (Or (Atomic s) (Atomic t) ) =  s ++ (show Disj) ++ t
+	show (Or (Atomic s) (Or a b) ) =  s ++ (show Disj) ++ (show (Or a b))
+	show (Or (Or a b) (Atomic s) ) =  (show (Or a b)) ++ (show Disj) ++ s
+	show (Or (Negation (Atomic s)) (Or a b) ) =  (show (Negation (Atomic s))) ++ (show Disj) ++ (show (Or a b))
+	show (Or (Or a b) (Negation (Atomic s)) ) =  (show (Or a b)) ++ (show Disj) ++ (show (Negation (Atomic s)))
+	
+	show (Or (Or a b) (Or c d) ) =  (show (Or a b)) ++ (show Disj) ++ (show (Or a b))
+	show (Or a (Or b c)) = "(" ++ (show a) ++ ")" ++ (show Disj) ++ (show (Or b c))
+	show (Or (Or a b) c ) =  (show (Or a b)) ++ (show Disj) ++ "(" ++ (show c) ++ ")"
+	
+	show (Or (Atomic s) a ) =  (show (Atomic s)) ++ (show Disj) ++ "(" ++ (show a) ++ ")"
+	show (Or a (Atomic s) ) =  "(" ++ (show a) ++ ")" ++ (show Disj) ++ (show (Atomic s))
+	show (Or (Negation (Atomic s)) a ) =  (show (Negation (Atomic s))) ++ (show Disj) ++ "(" ++ (show a) ++ ")"
+	show (Or a (Negation (Atomic s)) ) =  "(" ++ (show a) ++ ")" ++ (show Disj) ++ (show (Negation (Atomic s)))
+
+	show (Or a b) = "(" ++ (show a) ++ ")" ++ (show Disj) ++ "(" ++ (show b) ++ ")"
+	
+	show (Implies (Atomic s) (Atomic t)) = s ++ (show Imp) ++ t
+	show (Implies (Atomic s) a) = s ++ (show Imp) ++ "(" ++ (show a) ++ ")"
+	show (Implies a (Atomic s)) = "(" ++ (show a) ++ ")" ++ (show Imp) ++ s  
+	show (Implies a b) = "(" ++ (show a) ++ ")" ++ (show Imp) ++ "(" ++ (show b) ++ ")"
+	
+	show (Negation a) = "NOT (" ++ (show a) ++ ")"
 
 instance Show Logical where
 	show Conj = " AND "
@@ -22,6 +61,8 @@ parse('!':xs) = negcombine (bracket 1 [] (tail xs))
 parse x = if (noneSpecial x)
 		then Atomic x
 		else combine (split special [] x) 
+
+newparse = parse . (filter (/= ' '))
 
 combine :: (String, String, String) -> Proposition
 combine ([], [], [])  = error "Empty Logical"
@@ -73,11 +114,11 @@ impfree (Negation a) = Negation (impfree a)
 impfree (Atomic a) = Atomic a
 
 negfree :: Proposition -> Proposition
+negfree (Negation (Negation a)) = negfree a
 negfree (And a b) = And (negfree a) (negfree b)
 negfree (Or a b) = Or (negfree a) (negfree b)
 negfree (Negation (And a b)) = Or (negfree (Negation a)) (negfree (Negation b))
 negfree (Negation (Or a b)) = And (negfree (Negation a)) (negfree (Negation b))
-negfree (Negation (Negation (Atomic a))) = (Atomic a)
 negfree p = p
 
 disfree :: Proposition -> Proposition
@@ -100,7 +141,22 @@ dissplit :: Proposition -> [Proposition]
 dissplit (Or a b) = (dissplit a) ++ (dissplit b)
 dissplit p = [p]
 
+atomicsplit :: Proposition -> String
+atomicsplit (Atomic a) = a
+atomicsplit (Negation (Atomic a)) = a ++ "!"
+
+clausesimp :: [String] -> [String]
+clausesimp [] = []
+clausesimp (x:y:xs)
+		| (y == x ++ "!") = ["CONTRA"]
+		| (y == x) = clausesimp (x:xs)
+clausesimp (x:xs) = [x] ++ (clausesimp xs) 
+
 cnf = (disfree . negfree . impfree)
 dnf = (confree . negfree . impfree)
 conjuncts = (consplit . cnf)
 disjuncts = (dissplit . dnf)
+
+conclauses = (map sort) . (map (map atomicsplit)) . (map dissplit) . (consplit . cnf)
+disclauses = (map sort) . (map (map atomicsplit)) . (map consplit) . (dissplit . dnf)
+
